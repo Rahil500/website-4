@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Queue Status - FastServ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="queue-page">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">⚕</div>
+        FastServ
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="index.html">Home</a>
+        <a href="register.html">Register</a>
+        <a href="queue-status.html" class="active">Live Queue</a>
+        <a href="admin.html">Admin</a>
+        <a href="doctor.html">Doctor</a>
+      </div>
+      <button class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Queue Header -->
+  <div class="queue-header">
+    <h2>📊 Live Queue Status</h2>
+    <div class="live-badge">
+      <span class="dot"></span>
+      LIVE
+    </div>
+  </div>
+
+  <div class="queue-content">
+    <!-- Main Display -->
+    <div class="queue-main-display" id="mainDisplay">
+      <!-- Filled by JS -->
+    </div>
+
+    <!-- Stats -->
+    <div class="queue-stats" id="queueStats">
+      <!-- Filled by JS -->
+    </div>
+
+    <!-- Department Queues -->
+    <h3 style="color:var(--gray-400);margin-bottom:1rem;text-transform:uppercase;letter-spacing:1px;font-size:0.9rem">📋 Department-wise Queue</h3>
+    <div class="dept-queues" id="deptQueues">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+  <footer class="footer" style="background:var(--dark-card)">
+    <p>&copy; 2026 FastServ - Smart Queue for Smart Health.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    function renderQueueDisplay() {
+      const patients = DB.get(DB.PATIENTS);
+      const departments = DB.get(DB.DEPARTMENTS);
+      const stats = getQueueStats();
+
+      // Find the first currently serving patient for the main display
+      const servingPatients = patients.filter(p => p.status === 'serving');
+      const mainServing = servingPatients[0];
+
+      // Next waiting patients
+      const nextWaiting = patients
+        .filter(p => p.status === 'waiting')
+        .sort((a, b) => a.queuePosition - b.queuePosition)
+        .slice(0, 5);
+
+      // Main display
+      const mainDisplay = document.getElementById('mainDisplay');
+      mainDisplay.innerHTML = `
+        <div class="now-serving">
+          <div class="serving-label">Now Serving</div>
+          <div class="serving-token">${mainServing ? mainServing.tokenNumber : '---'}</div>
+          <div class="serving-counter">${mainServing ? getDepartment(mainServing.departmentId)?.name || '' : 'No active patient'}</div>
+        </div>
+        <div class="next-tokens">
+          <h3>⏭ Up Next</h3>
+          <div class="token-list">
+            ${nextWaiting.length ? nextWaiting.map(p => {
+              const dept = getDepartment(p.departmentId);
+              return `
+                <div class="token-item">
+                  <span class="t-num">${p.tokenNumber}</span>
+                  <span class="t-dept">${dept ? dept.name : ''}</span>
+                </div>
+              `;
+            }).join('') : '<div class="empty-state" style="padding:2rem"><p>No patients waiting</p></div>'}
+          </div>
+        </div>
+      `;
+
+      // Stats
+      document.getElementById('queueStats').innerHTML = `
+        <div class="queue-stat-card qs-waiting">
+          <div class="qs-num">${stats.waiting}</div>
+          <div class="qs-label">Waiting</div>
+        </div>
+        <div class="queue-stat-card qs-serving">
+          <div class="qs-num">${stats.serving}</div>
+          <div class="qs-label">Being Served</div>
+        </div>
+        <div class="queue-stat-card qs-completed">
+          <div class="qs-num">${stats.completed}</div>
+          <div class="qs-label">Completed</div>
+        </div>
+        <div class="queue-stat-card qs-total">
+          <div class="qs-num">${stats.total}</div>
+          <div class="qs-label">Total Registered</div>
+        </div>
+      `;
+
+      // Department queues
+      const deptQueues = document.getElementById('deptQueues');
+      deptQueues.innerHTML = departments.map(dept => {
+        const info = getDeptQueueInfo(dept.id);
+        return `
+          <div class="dept-queue-card">
+            <div class="dq-header">
+              <span class="dq-name" style="color:${dept.color}">${dept.name}</span>
+              <span class="dq-count">${info.waiting.length} waiting</span>
+            </div>
+            <div class="dq-serving">
+              ${info.serving ? info.serving.tokenNumber : '---'}
+            </div>
+            <div style="margin-top:0.5rem;font-size:0.8rem;color:var(--gray-500);text-align:center">
+              ${info.serving ? 'Now Serving' : 'No active patient'} · ${info.completed.length} completed
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderQueueDisplay();
+      // Auto-refresh every 5 seconds
+      setInterval(renderQueueDisplay, 5000);
+    });
+  </script>
+</body>
+</html>

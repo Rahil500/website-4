@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Registration - FastServ</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">⚕</div>
+        FastServ
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="index.html">Home</a>
+        <a href="register.html" class="active">Register</a>
+        <a href="queue-status.html">Live Queue</a>
+        <a href="admin.html">Admin</a>
+        <a href="doctor.html">Doctor</a>
+      </div>
+      <button class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <section class="section">
+    <!-- QR Scan Option -->
+    <div style="text-align:center;margin-bottom:2rem">
+      <button class="btn btn-accent btn-lg" onclick="openRegQRScanner()">📷 Scan QR Code to Auto-Fill</button>
+      <p style="font-size:0.85rem;color:var(--gray-600);margin-top:0.5rem">Or fill the form manually below</p>
+    </div>
+
+    <div class="form-container">
+      <div class="form-header">
+        <h2>📋 Patient Registration</h2>
+        <p>Fill in your details to book your appointment and get a token</p>
+      </div>
+      <div class="form-body">
+        <form id="registerForm" onsubmit="handleRegistration(event)">
+
+          <div class="form-group">
+            <label>Patient Name <span class="required">*</span></label>
+            <input type="text" class="form-control" id="patientName" placeholder="Enter full name" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Age <span class="required">*</span></label>
+              <input type="number" class="form-control" id="patientAge" placeholder="Age" min="0" max="120" required>
+            </div>
+            <div class="form-group">
+              <label>Gender <span class="required">*</span></label>
+              <div class="radio-group">
+                <label><input type="radio" name="gender" value="Male" required> Male</label>
+                <label><input type="radio" name="gender" value="Female"> Female</label>
+                <label><input type="radio" name="gender" value="Other"> Other</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number <span class="required">*</span></label>
+            <input type="tel" class="form-control" id="patientPhone" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+          </div>
+
+          <div class="form-group">
+            <label>Village / Address <span class="required">*</span></label>
+            <input type="text" class="form-control" id="patientVillage" placeholder="Enter your village or address" required>
+          </div>
+
+          <div class="form-group">
+            <label>Select Department <span class="required">*</span></label>
+            <select class="form-control" id="patientDept" required>
+              <option value="">-- Choose Department --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Select Camp</label>
+            <select class="form-control" id="patientCamp">
+              <option value="">-- Choose Camp --</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg mt-2">
+            ✅ Register & Get Token
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- QR Scanner for Registration -->
+  <div class="qr-scanner-overlay" id="regQROverlay">
+    <div class="qr-scanner-box">
+      <div class="qr-header">
+        <h3>📷 Scan Camp QR Code</h3>
+        <button class="modal-close" onclick="closeRegQRScanner()">&times;</button>
+      </div>
+      <div class="qr-body">
+        <div id="reg-qr-reader"></div>
+        <div id="reg-qr-status" class="qr-status" style="display:none"></div>
+        <p style="margin-top:1rem;font-size:0.85rem;color:var(--gray-600)">Scan a camp QR code to auto-select the camp</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2026 FastServ - Smart Queue for Smart Health.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    let regQrScanner = null;
+
+    function populateDropdowns() {
+      const deptSelect = document.getElementById('patientDept');
+      const campSelect = document.getElementById('patientCamp');
+      const departments = DB.get(DB.DEPARTMENTS);
+      const camps = DB.get(DB.CAMPS);
+
+      departments.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.name;
+        deptSelect.appendChild(opt);
+      });
+
+      camps.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.name} - ${formatDate(c.date)}`;
+        campSelect.appendChild(opt);
+      });
+
+      // Pre-select camp from URL
+      const params = new URLSearchParams(window.location.search);
+      const campId = params.get('camp');
+      if (campId) campSelect.value = campId;
+    }
+
+    function handleRegistration(e) {
+      e.preventDefault();
+
+      const gender = document.querySelector('input[name="gender"]:checked');
+      if (!gender) { showToast('Please select gender', 'error'); return; }
+
+      const formData = {
+        name: document.getElementById('patientName').value.trim(),
+        age: parseInt(document.getElementById('patientAge').value),
+        gender: gender.value,
+        phone: document.getElementById('patientPhone').value.trim(),
+        village: document.getElementById('patientVillage').value.trim(),
+        departmentId: document.getElementById('patientDept').value,
+        campId: document.getElementById('patientCamp').value || 'camp-1'
+      };
+
+      if (!formData.name || !formData.departmentId) {
+        showToast('Please fill all required fields', 'error');
+        return;
+      }
+
+      const patient = registerPatient(formData);
+      if (patient) {
+        window.location.href = `token.html?token=${patient.tokenNumber}`;
+      } else {
+        showToast('Registration failed. Please try again.', 'error');
+      }
+    }
+
+    // ===== QR Scanner for registration page =====
+    function openRegQRScanner() {
+      document.getElementById('regQROverlay').classList.add('show');
+      startRegQRScanner();
+    }
+    function closeRegQRScanner() {
+      document.getElementById('regQROverlay').classList.remove('show');
+      stopRegQRScanner();
+    }
+    function startRegQRScanner() {
+      if (typeof Html5Qrcode === 'undefined') {
+        document.getElementById('reg-qr-status').style.display = 'block';
+        document.getElementById('reg-qr-status').innerHTML = '<p style="color:var(--danger)">⚠️ QR library not loaded. Check internet.</p>';
+        return;
+      }
+      regQrScanner = new Html5Qrcode("reg-qr-reader");
+      regQrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          closeRegQRScanner();
+          // Try to extract camp ID from scanned URL
+          try {
+            const url = new URL(decodedText);
+            const campId = url.searchParams.get('camp');
+            if (campId) {
+              document.getElementById('patientCamp').value = campId;
+              showToast('Camp selected from QR code! Fill your details and submit.', 'success');
+            } else {
+              window.location.href = decodedText;
+            }
+          } catch {
+            showToast('QR scanned: ' + decodedText, 'success');
+          }
+        },
+        () => {}
+      ).catch(err => {
+        const statusEl = document.getElementById('reg-qr-status');
+        statusEl.style.display = 'block';
+        statusEl.innerHTML = '<p style="color:var(--warning)">📷 Camera access needed. Please allow camera permission.</p>';
+      });
+    }
+    function stopRegQRScanner() {
+      if (regQrScanner) {
+        regQrScanner.stop().catch(() => {});
+        regQrScanner = null;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', populateDropdowns);
+  </script>
+</body>
+</html>

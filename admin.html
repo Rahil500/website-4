@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - FastServ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-header">
+        <div class="lock-icon">🔒</div>
+        <h2>Admin Login</h2>
+        <p>Enter your password to access the admin dashboard</p>
+      </div>
+      <div class="login-body">
+        <div class="login-error" id="loginError"></div>
+        <div class="form-group">
+          <label>Password <span class="required">*</span></label>
+          <div class="password-wrapper">
+            <input type="password" class="form-control" id="loginPassword" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')handleLogin('admin', initAdminDashboard)">
+            <button class="toggle-pass" onclick="togglePasswordVisibility()">👁</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" onclick="handleLogin('admin', initAdminDashboard)">
+          🔓 Login
+        </button>
+      </div>
+      <div class="login-footer">
+        <p>Default password: <strong>admin123</strong></p>
+        <p style="margin-top:4px"><a href="index.html" style="color:var(--primary)">← Back to Home</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN DASHBOARD ===== -->
+  <div class="dashboard" style="display:none">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <h2>
+          <div class="s-icon">⚕</div>
+          FastServ Admin
+        </h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="active" onclick="showSection('overview')"><span class="nav-icon">📊</span> Overview</a>
+        <a href="#" onclick="showSection('patients')"><span class="nav-icon">👥</span> Patients</a>
+        <a href="#" onclick="showSection('queue')"><span class="nav-icon">📋</span> Queue Management</a>
+        <a href="#" onclick="showSection('departments')"><span class="nav-icon">🏥</span> Departments</a>
+        <a href="#" onclick="showSection('doctors')"><span class="nav-icon">👨‍⚕️</span> Doctors</a>
+        <a href="#" onclick="showSection('camps')"><span class="nav-icon">🏕️</span> Camps</a>
+        <a href="#" onclick="showSection('settings')"><span class="nav-icon">⚙️</span> Settings</a>
+        <a href="index.html"><span class="nav-icon">🏠</span> Back to Home</a>
+      </nav>
+      <button class="logout-btn" onclick="handleLogout('admin')">
+        <span>🚪</span> Logout
+      </button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="dash-main">
+      <button class="sidebar-toggle btn btn-sm" onclick="document.getElementById('sidebar').classList.toggle('open')" style="margin-bottom:1rem;background:var(--gray-200);color:var(--gray-700);display:none">
+        ☰ Menu
+      </button>
+
+      <!-- Overview Section -->
+      <div id="section-overview">
+        <div class="dash-header">
+          <h1>📊 Dashboard Overview</h1>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <span style="color:var(--gray-600);font-size:0.9rem" id="currentDate"></span>
+            <button class="btn btn-danger btn-sm" onclick="handleLogout('admin')">🚪 Logout</button>
+          </div>
+        </div>
+        <div class="dash-cards" id="overviewCards"></div>
+        <div class="table-container">
+          <div class="table-header">
+            <h3>Recent Registrations</h3>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Token</th><th>Name</th><th>Age</th><th>Department</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="recentTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patients Section -->
+      <div id="section-patients" class="hidden">
+        <div class="dash-header">
+          <h1>👥 All Patients</h1>
+        </div>
+        <div class="table-container">
+          <div class="table-header">
+            <h3>Registered Patients</h3>
+            <input type="text" class="table-search" placeholder="🔍 Search patients..." oninput="filterPatients(this.value)">
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Token</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Village</th><th>Department</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="patientsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Queue Management Section -->
+      <div id="section-queue" class="hidden">
+        <div class="dash-header">
+          <h1>📋 Queue Management</h1>
+        </div>
+        <div class="dash-cards" id="queueCards"></div>
+        <div id="queueDeptActions"></div>
+      </div>
+
+      <!-- Departments Section -->
+      <div id="section-departments" class="hidden">
+        <div class="dash-header">
+          <h1>🏥 Departments</h1>
+          <button class="btn btn-primary btn-sm" onclick="openAddDeptModal()">+ Add Department</button>
+        </div>
+        <div class="table-container">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Code</th><th>Name</th><th>Patients</th><th>Waiting</th><th>Completed</th></tr>
+              </thead>
+              <tbody id="deptTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Doctors Section -->
+      <div id="section-doctors" class="hidden">
+        <div class="dash-header">
+          <h1>👨‍⚕️ Doctors</h1>
+          <button class="btn btn-primary btn-sm" onclick="openAddDoctorModal()">+ Add Doctor</button>
+        </div>
+        <div class="table-container">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Specialization</th><th>Department</th></tr>
+              </thead>
+              <tbody id="doctorTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camps Section -->
+      <div id="section-camps" class="hidden">
+        <div class="dash-header">
+          <h1>🏕️ Medical Camps</h1>
+          <button class="btn btn-primary btn-sm" onclick="openAddCampModal()">+ Add Camp</button>
+        </div>
+        <div class="table-container">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Date</th><th>Location</th><th>Status</th></tr>
+              </thead>
+              <tbody id="campTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Section -->
+      <div id="section-settings" class="hidden">
+        <div class="dash-header">
+          <h1>⚙️ Settings</h1>
+        </div>
+        <div class="form-container" style="max-width:500px;margin:0">
+          <div class="form-header" style="background:var(--gray-800)">
+            <h2>🔐 Change Passwords</h2>
+            <p>Update admin and doctor panel passwords</p>
+          </div>
+          <div class="form-body">
+            <div class="form-group">
+              <label>New Admin Password</label>
+              <input type="password" class="form-control" id="newAdminPass" placeholder="Enter new admin password">
+            </div>
+            <button class="btn btn-primary btn-block mb-2" onclick="changePassword('admin')">Update Admin Password</button>
+
+            <hr style="margin:1.5rem 0;border:none;border-top:1px solid var(--gray-200)">
+
+            <div class="form-group">
+              <label>New Doctor Password</label>
+              <input type="password" class="form-control" id="newDoctorPass" placeholder="Enter new doctor password">
+            </div>
+            <button class="btn btn-primary btn-block mb-2" onclick="changePassword('doctor')">Update Doctor Password</button>
+
+            <hr style="margin:1.5rem 0;border:none;border-top:1px solid var(--gray-200)">
+
+            <div class="form-group">
+              <label style="color:var(--danger)">⚠️ Danger Zone</label>
+              <button class="btn btn-danger btn-block" onclick="resetAllData()">🗑️ Reset All Data</button>
+              <p style="font-size:0.8rem;color:var(--gray-500);margin-top:0.5rem">This will clear all patients, tokens, and reset to defaults.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Add Department Modal -->
+  <div class="modal-overlay" id="addDeptModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Department</h3>
+        <button class="modal-close" onclick="closeDeptModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Department Name <span class="required">*</span></label>
+          <input type="text" class="form-control" id="newDeptName" placeholder="e.g. Cardiology">
+        </div>
+        <div class="form-group">
+          <label>Short Code <span class="required">*</span></label>
+          <input type="text" class="form-control" id="newDeptCode" placeholder="e.g. CR" maxlength="3">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="addDepartment()">Add Department</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Doctor Modal -->
+  <div class="modal-overlay" id="addDoctorModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Doctor</h3>
+        <button class="modal-close" onclick="closeDoctorModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Doctor Name <span class="required">*</span></label>
+          <input type="text" class="form-control" id="newDoctorName" placeholder="Dr. Full Name">
+        </div>
+        <div class="form-group">
+          <label>Specialization</label>
+          <input type="text" class="form-control" id="newDoctorSpec" placeholder="e.g. Cardiologist">
+        </div>
+        <div class="form-group">
+          <label>Department <span class="required">*</span></label>
+          <select class="form-control" id="newDoctorDept"></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="addDoctor()">Add Doctor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Camp Modal -->
+  <div class="modal-overlay" id="addCampModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Camp</h3>
+        <button class="modal-close" onclick="closeCampModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Camp Name <span class="required">*</span></label>
+          <input type="text" class="form-control" id="newCampName" placeholder="Camp name">
+        </div>
+        <div class="form-group">
+          <label>Date <span class="required">*</span></label>
+          <input type="date" class="form-control" id="newCampDate">
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="text" class="form-control" id="newCampTime" placeholder="e.g. 09:00 AM - 05:00 PM">
+        </div>
+        <div class="form-group">
+          <label>Location <span class="required">*</span></label>
+          <input type="text" class="form-control" id="newCampLocation" placeholder="Full address">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" class="form-control" id="newCampDesc" placeholder="Brief description">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="addCamp()">Add Camp</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    let currentSection = 'overview';
+
+    // ===== AUTH GATE =====
+    function initAdminDashboard() {
+      document.querySelector('.dashboard').style.display = 'grid';
+      renderAll();
+    }
+
+    function togglePasswordVisibility() {
+      const input = document.getElementById('loginPassword');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    // ===== Sections =====
+    function showSection(name) {
+      document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
+      document.getElementById('section-' + name).classList.remove('hidden');
+      document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      currentSection = name;
+      renderAll();
+      document.getElementById('sidebar').classList.remove('open');
+    }
+
+    function renderAll() {
+      renderOverview();
+      renderPatients();
+      renderQueueMgmt();
+      renderDepartments();
+      renderDoctors();
+      renderCamps();
+      document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function renderOverview() {
+      const stats = getQueueStats();
+      const departments = DB.get(DB.DEPARTMENTS);
+
+      document.getElementById('overviewCards').innerHTML = `
+        <div class="dash-card"><div class="dc-icon icon-blue">👥</div><div class="dc-info"><div class="dc-num">${stats.total}</div><div class="dc-label">Total Patients</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-orange">⏳</div><div class="dc-info"><div class="dc-num">${stats.waiting}</div><div class="dc-label">Waiting</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-green">✅</div><div class="dc-info"><div class="dc-num">${stats.completed}</div><div class="dc-label">Completed</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-red">🏥</div><div class="dc-info"><div class="dc-num">${departments.length}</div><div class="dc-label">Departments</div></div></div>
+      `;
+
+      const patients = DB.get(DB.PATIENTS).slice(-10).reverse();
+      const statusBadge = { waiting: 'badge-waiting', serving: 'badge-serving', completed: 'badge-completed' };
+      document.getElementById('recentTable').innerHTML = patients.map(p => {
+        const dept = getDepartment(p.departmentId);
+        return `<tr>
+          <td><strong>${p.tokenNumber}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age}</td>
+          <td>${dept ? dept.name : '-'}</td>
+          <td><span class="badge ${statusBadge[p.status]}">${p.status.toUpperCase()}</span></td>
+          <td>
+            ${p.status === 'waiting' ? `<button class="btn btn-primary btn-sm" onclick="adminCallPatient('${p.departmentId}')">Call</button>` : ''}
+            ${p.status === 'serving' ? `<button class="btn btn-success btn-sm" onclick="adminComplete('${p.id}')">Complete</button>` : ''}
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="6" class="text-center" style="padding:2rem;color:var(--gray-500)">No patients registered yet</td></tr>';
+    }
+
+    function renderPatients() {
+      const patients = DB.get(DB.PATIENTS);
+      const statusBadge = { waiting: 'badge-waiting', serving: 'badge-serving', completed: 'badge-completed' };
+      document.getElementById('patientsTable').innerHTML = patients.map(p => {
+        const dept = getDepartment(p.departmentId);
+        return `<tr>
+          <td><strong>${p.tokenNumber}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age}</td>
+          <td>${p.gender}</td>
+          <td>${p.phone}</td>
+          <td>${p.village}</td>
+          <td>${dept ? dept.name : '-'}</td>
+          <td><span class="badge ${statusBadge[p.status]}">${p.status.toUpperCase()}</span></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="8" class="text-center" style="padding:2rem;color:var(--gray-500)">No patients registered</td></tr>';
+    }
+
+    function filterPatients(query) {
+      const q = query.toLowerCase();
+      const patients = DB.get(DB.PATIENTS);
+      const filtered = patients.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.tokenNumber.toLowerCase().includes(q) ||
+        p.phone.includes(q) ||
+        p.village.toLowerCase().includes(q)
+      );
+      const statusBadge = { waiting: 'badge-waiting', serving: 'badge-serving', completed: 'badge-completed' };
+      document.getElementById('patientsTable').innerHTML = filtered.map(p => {
+        const dept = getDepartment(p.departmentId);
+        return `<tr>
+          <td><strong>${p.tokenNumber}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age}</td>
+          <td>${p.gender}</td>
+          <td>${p.phone}</td>
+          <td>${p.village}</td>
+          <td>${dept ? dept.name : '-'}</td>
+          <td><span class="badge ${statusBadge[p.status]}">${p.status.toUpperCase()}</span></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="8" class="text-center" style="padding:2rem">No matching patients</td></tr>';
+    }
+
+    function renderQueueMgmt() {
+      const stats = getQueueStats();
+      const departments = DB.get(DB.DEPARTMENTS);
+      
+      document.getElementById('queueCards').innerHTML = `
+        <div class="dash-card"><div class="dc-icon icon-orange">⏳</div><div class="dc-info"><div class="dc-num">${stats.waiting}</div><div class="dc-label">Waiting</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-blue">🔔</div><div class="dc-info"><div class="dc-num">${stats.serving}</div><div class="dc-label">Being Served</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-green">✅</div><div class="dc-info"><div class="dc-num">${stats.completed}</div><div class="dc-label">Completed</div></div></div>
+      `;
+
+      document.getElementById('queueDeptActions').innerHTML = departments.map(dept => {
+        const info = getDeptQueueInfo(dept.id);
+        return `
+          <div class="table-container" style="margin-bottom:1rem">
+            <div class="table-header">
+              <h3 style="color:${dept.color}">${dept.name} (${dept.shortCode})</h3>
+              <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+                <span class="badge badge-serving">${info.serving ? 'Serving: ' + info.serving.tokenNumber : 'No active'}</span>
+                <span class="badge badge-waiting">${info.waiting.length} waiting</span>
+                <button class="btn btn-primary btn-sm" onclick="adminCallPatient('${dept.id}')">📢 Call Next</button>
+              </div>
+            </div>
+            ${info.waiting.length > 0 ? `
+              <table>
+                <thead><tr><th>Token</th><th>Name</th><th>Position</th><th>Status</th></tr></thead>
+                <tbody>
+                  ${info.waiting.map(p => `<tr>
+                    <td><strong>${p.tokenNumber}</strong></td>
+                    <td>${p.name}</td>
+                    <td>#${p.queuePosition}</td>
+                    <td><span class="badge badge-waiting">WAITING</span></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            ` : '<div style="padding:1rem;text-align:center;color:var(--gray-500)">No patients waiting</div>'}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDepartments() {
+      const departments = DB.get(DB.DEPARTMENTS);
+      document.getElementById('deptTable').innerHTML = departments.map(d => {
+        const info = getDeptQueueInfo(d.id);
+        return `<tr>
+          <td><strong style="color:${d.color}">${d.shortCode}</strong></td>
+          <td>${d.name}</td>
+          <td>${info.total}</td>
+          <td>${info.waiting.length}</td>
+          <td>${info.completed.length}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderDoctors() {
+      const doctors = DB.get(DB.DOCTORS);
+      document.getElementById('doctorTable').innerHTML = doctors.map(d => {
+        const dept = getDepartment(d.departmentId);
+        return `<tr>
+          <td><strong>${d.name}</strong></td>
+          <td>${d.specialization}</td>
+          <td>${dept ? dept.name : '-'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderCamps() {
+      const camps = DB.get(DB.CAMPS);
+      document.getElementById('campTable').innerHTML = camps.map(c => `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td>${formatDate(c.date)}</td>
+          <td>${c.location}</td>
+          <td><span class="badge badge-upcoming">${c.status.toUpperCase()}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // ===== Actions =====
+    function adminCallPatient(deptId) {
+      const next = callNextPatient(deptId);
+      if (next) showToast(`Now serving: ${next.tokenNumber} - ${next.name}`);
+      else showToast('No more patients waiting in this department', 'warning');
+      renderAll();
+    }
+
+    function adminComplete(patientId) {
+      markCompleted(patientId);
+      showToast('Patient marked as completed');
+      renderAll();
+    }
+
+    // ===== Settings =====
+    function changePassword(role) {
+      const inputId = role === 'admin' ? 'newAdminPass' : 'newDoctorPass';
+      const newPass = document.getElementById(inputId).value.trim();
+      if (!newPass || newPass.length < 4) {
+        showToast('Password must be at least 4 characters', 'error');
+        return;
+      }
+      AUTH.setPassword(role, newPass);
+      document.getElementById(inputId).value = '';
+      showToast(`${role.charAt(0).toUpperCase() + role.slice(1)} password updated successfully!`);
+    }
+
+    function resetAllData() {
+      if (confirm('⚠️ Are you sure? This will delete ALL patient data, tokens, and reset everything to defaults.')) {
+        localStorage.removeItem('fastserv_initialized');
+        localStorage.removeItem(DB.PATIENTS);
+        localStorage.removeItem(DB.CAMPS);
+        localStorage.removeItem(DB.DEPARTMENTS);
+        localStorage.removeItem(DB.DOCTORS);
+        initDefaultData();
+        showToast('All data has been reset to defaults');
+        renderAll();
+      }
+    }
+
+    // ===== Modals =====
+    function openAddDeptModal() { document.getElementById('addDeptModal').classList.add('show'); }
+    function closeDeptModal() { document.getElementById('addDeptModal').classList.remove('show'); }
+    function openAddDoctorModal() {
+      const sel = document.getElementById('newDoctorDept');
+      sel.innerHTML = '<option value="">Select...</option>';
+      DB.get(DB.DEPARTMENTS).forEach(d => { sel.innerHTML += `<option value="${d.id}">${d.name}</option>`; });
+      document.getElementById('addDoctorModal').classList.add('show');
+    }
+    function closeDoctorModal() { document.getElementById('addDoctorModal').classList.remove('show'); }
+    function openAddCampModal() { document.getElementById('addCampModal').classList.add('show'); }
+    function closeCampModal() { document.getElementById('addCampModal').classList.remove('show'); }
+
+    function addDepartment() {
+      const name = document.getElementById('newDeptName').value.trim();
+      const code = document.getElementById('newDeptCode').value.trim().toUpperCase();
+      if (!name || !code) { showToast('Please fill all fields', 'error'); return; }
+      const depts = DB.get(DB.DEPARTMENTS);
+      depts.push({ id: generateId('dept'), name, shortCode: code, color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0') });
+      DB.set(DB.DEPARTMENTS, depts);
+      closeDeptModal();
+      showToast('Department added successfully');
+      renderAll();
+    }
+
+    function addDoctor() {
+      const name = document.getElementById('newDoctorName').value.trim();
+      const spec = document.getElementById('newDoctorSpec').value.trim();
+      const deptId = document.getElementById('newDoctorDept').value;
+      if (!name || !deptId) { showToast('Please fill required fields', 'error'); return; }
+      const docs = DB.get(DB.DOCTORS);
+      docs.push({ id: generateId('doc'), name, specialization: spec, departmentId: deptId });
+      DB.set(DB.DOCTORS, docs);
+      closeDoctorModal();
+      showToast('Doctor added successfully');
+      renderAll();
+    }
+
+    function addCamp() {
+      const name = document.getElementById('newCampName').value.trim();
+      const date = document.getElementById('newCampDate').value;
+      const time = document.getElementById('newCampTime').value.trim();
+      const location = document.getElementById('newCampLocation').value.trim();
+      const desc = document.getElementById('newCampDesc').value.trim();
+      if (!name || !date || !location) { showToast('Please fill required fields', 'error'); return; }
+      const camps = DB.get(DB.CAMPS);
+      camps.push({ id: generateId('camp'), name, date, time: time || 'TBA', location, description: desc, status: 'upcoming', departments: [] });
+      DB.set(DB.CAMPS, camps);
+      closeCampModal();
+      showToast('Camp added successfully');
+      renderAll();
+    }
+
+    // ===== Mobile =====
+    function checkMobile() {
+      const toggle = document.querySelector('.sidebar-toggle');
+      toggle.style.display = window.innerWidth <= 768 ? 'inline-flex' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      showLoginScreen('admin', initAdminDashboard);
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+    });
+  </script>
+</body>
+</html>

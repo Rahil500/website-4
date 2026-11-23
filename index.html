@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastServ - Smart Queue for Smart Health</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- QR Code Libraries (CDN - loads in browser) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">⚕</div>
+        FastServ
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="index.html" class="active">Home</a>
+        <a href="register.html">Register</a>
+        <a href="queue-status.html">Live Queue</a>
+        <a href="admin.html">Admin</a>
+        <a href="doctor.html">Doctor</a>
+        <a href="register.html" class="btn-nav">Register Now</a>
+      </div>
+      <button class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1>No Compromise When It Comes to <span>Your Well-being</span></h1>
+        <p>Digital queue management system for community health camps. Register online, scan a QR code, get your token, and skip the long queues. Healthcare made smarter and faster.</p>
+        <div class="hero-btns">
+          <a href="register.html" class="btn btn-accent btn-lg">📋 Register Now</a>
+          <button class="btn btn-outline btn-lg" onclick="openQRScanner()">📷 Scan QR to Register</button>
+          <button class="btn btn-outline btn-lg" onclick="openTokenCheck()">🔍 Check Token</button>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-card">
+          <div class="big-icon">🏥</div>
+          <h3>Smart Queue<br>for Smart Health</h3>
+          <p style="margin-top:0.5rem;opacity:0.8;font-size:0.9rem">Scan QR • Book Appointment • Get Token</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat">
+      <div class="stat-num" id="statDoctors">90</div>
+      <div class="stat-label">Doctors Available</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="statPatients">1500+</div>
+      <div class="stat-label">Patient Capacity</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">24 hrs</div>
+      <div class="stat-label">Service Hours</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="statDepts">15</div>
+      <div class="stat-label">Departments</div>
+    </div>
+  </div>
+
+  <!-- Upcoming Camps -->
+  <section class="section">
+    <div class="section-title">
+      <h2>🏕️ Upcoming Medical Camps</h2>
+      <p>Register for upcoming free health camps in your area. Scan the QR code or click to register.</p>
+    </div>
+    <div class="camps-grid" id="campsGrid"></div>
+  </section>
+
+  <!-- QR Scanner Modal -->
+  <div class="qr-scanner-overlay" id="qrScannerOverlay">
+    <div class="qr-scanner-box">
+      <div class="qr-header">
+        <h3>📷 Scan QR Code to Register</h3>
+        <button class="modal-close" onclick="closeQRScanner()">&times;</button>
+      </div>
+      <div class="qr-body">
+        <div id="qr-reader"></div>
+        <div id="qr-status" class="qr-status" style="display:none"></div>
+        <p style="margin-top:1rem;font-size:0.85rem;color:var(--gray-600)">Point your camera at a FastServ camp QR code to auto-register</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token Check Modal -->
+  <div class="modal-overlay" id="tokenModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🔍 Check Your Token Status</h3>
+        <button class="modal-close" onclick="closeTokenCheck()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Enter your Token Number</label>
+          <input type="text" class="form-control" id="tokenInput" placeholder="e.g. GM-001" onkeydown="if(event.key==='Enter')searchToken()">
+        </div>
+        <div id="tokenResult"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="searchToken()">Search</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2026 FastServ - Smart Queue for Smart Health. Built for community welfare.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    let html5QrCode = null;
+
+    // ===== Render camps with QR codes =====
+    function renderCamps() {
+      const camps = DB.get(DB.CAMPS);
+      const grid = document.getElementById('campsGrid');
+      if (!camps.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No upcoming camps scheduled.</p></div>';
+        return;
+      }
+      grid.innerHTML = camps.map(camp => {
+        const depts = camp.departments.map(id => {
+          const d = getDepartment(id);
+          return d ? d.name : '';
+        }).filter(Boolean).join(', ');
+
+        return `
+          <div class="camp-card">
+            <div class="camp-header">
+              <div>
+                <h3>${camp.name}</h3>
+                <p style="opacity:0.85;font-size:0.85rem;margin-top:4px">${camp.description}</p>
+              </div>
+              <span class="camp-badge">${camp.status === 'upcoming' ? '📅 Upcoming' : '✅ Active'}</span>
+            </div>
+            <div class="camp-body">
+              <div class="camp-info">
+                <div class="info-row">
+                  <div class="icon">📅</div>
+                  <div><strong>Date:</strong> ${formatDate(camp.date)}</div>
+                </div>
+                <div class="info-row">
+                  <div class="icon">⏰</div>
+                  <div><strong>Time:</strong> ${camp.time}</div>
+                </div>
+                <div class="info-row">
+                  <div class="icon">📍</div>
+                  <div><strong>Location:</strong> ${camp.location}</div>
+                </div>
+                <div class="info-row">
+                  <div class="icon">🏥</div>
+                  <div><strong>Departments:</strong> ${depts}</div>
+                </div>
+              </div>
+              <!-- QR Code for this camp -->
+              <div class="qr-camp-code">
+                <div id="qr-camp-${camp.id}"></div>
+                <p>📱 Scan this QR to register for this camp</p>
+              </div>
+              <div class="camp-actions mt-2">
+                <a href="register.html?camp=${camp.id}" class="btn btn-primary btn-sm" style="flex:1;justify-content:center">📋 Register Now</a>
+                <a href="queue-status.html" class="btn btn-sm" style="flex:1;justify-content:center;background:var(--gray-200);color:var(--gray-700)">📊 View Queue</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Generate QR codes for each camp
+      setTimeout(() => {
+        camps.forEach(camp => {
+          const container = document.getElementById('qr-camp-' + camp.id);
+          if (container && typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+              text: getRegistrationURL(camp.id),
+              width: 140,
+              height: 140,
+              colorDark: '#0a6abf',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        });
+      }, 200);
+    }
+
+    // ===== QR Scanner =====
+    function openQRScanner() {
+      document.getElementById('qrScannerOverlay').classList.add('show');
+      startQRScanner();
+    }
+
+    function closeQRScanner() {
+      document.getElementById('qrScannerOverlay').classList.remove('show');
+      stopQRScanner();
+    }
+
+    function startQRScanner() {
+      if (typeof Html5Qrcode === 'undefined') {
+        document.getElementById('qr-status').style.display = 'block';
+        document.getElementById('qr-status').innerHTML = '<p style="color:var(--danger)">⚠️ QR library not loaded. Please check your internet connection and reload.</p>';
+        return;
+      }
+      html5QrCode = new Html5Qrcode("qr-reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Successfully scanned
+          closeQRScanner();
+          if (decodedText.includes('register.html')) {
+            window.location.href = decodedText;
+          } else if (decodedText.includes('token.html')) {
+            window.location.href = decodedText;
+          } else {
+            showToast('QR code scanned! Redirecting...', 'success');
+            window.location.href = decodedText;
+          }
+        },
+        (errorMessage) => { /* Ignore scan errors, keep trying */ }
+      ).catch(err => {
+        const statusEl = document.getElementById('qr-status');
+        statusEl.style.display = 'block';
+        statusEl.innerHTML = `
+          <p style="color:var(--warning);margin-bottom:0.5rem">📷 Camera access needed to scan QR codes.</p>
+          <p style="font-size:0.85rem;color:var(--gray-600)">Please allow camera permission when prompted, or use a device with a camera.</p>
+          <p style="font-size:0.85rem;color:var(--gray-600);margin-top:0.5rem">You can also <a href="register.html" style="color:var(--primary);text-decoration:underline">register manually here</a>.</p>
+        `;
+      });
+    }
+
+    function stopQRScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode = null;
+      }
+    }
+
+    // ===== Token Check =====
+    function openTokenCheck() {
+      document.getElementById('tokenModal').classList.add('show');
+      document.getElementById('tokenInput').focus();
+    }
+    function closeTokenCheck() {
+      document.getElementById('tokenModal').classList.remove('show');
+      document.getElementById('tokenResult').innerHTML = '';
+    }
+    function searchToken() {
+      const val = document.getElementById('tokenInput').value.trim();
+      const result = document.getElementById('tokenResult');
+      if (!val) { result.innerHTML = '<p style="color:var(--danger)">Please enter a token number.</p>'; return; }
+      const patient = lookupToken(val);
+      if (!patient) {
+        result.innerHTML = '<p style="color:var(--danger)">Token not found. Please check and try again.</p>';
+        return;
+      }
+      const dept = getDepartment(patient.departmentId);
+      const statusColors = { waiting: 'badge-waiting', serving: 'badge-serving', completed: 'badge-completed' };
+      result.innerHTML = `
+        <div style="margin-top:1rem;padding:1rem;background:var(--gray-100);border-radius:8px">
+          <p><strong>Patient:</strong> ${patient.name}</p>
+          <p><strong>Token:</strong> ${patient.tokenNumber}</p>
+          <p><strong>Department:</strong> ${dept ? dept.name : '-'}</p>
+          <p><strong>Queue Position:</strong> #${patient.queuePosition}</p>
+          <p><strong>Status:</strong> <span class="badge ${statusColors[patient.status]}">${patient.status.toUpperCase()}</span></p>
+          <a href="token.html?token=${patient.tokenNumber}" class="btn btn-primary btn-sm mt-2" style="display:inline-flex">View Full Details →</a>
+        </div>
+      `;
+    }
+
+    document.addEventListener('DOMContentLoaded', renderCamps);
+  </script>
+</body>
+</html>

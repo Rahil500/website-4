@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Dashboard - FastServ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-header" style="background:linear-gradient(135deg, #28a745, #20c997)">
+        <div class="lock-icon">👨‍⚕️</div>
+        <h2>Doctor Login</h2>
+        <p>Enter your password to access the doctor dashboard</p>
+      </div>
+      <div class="login-body">
+        <div class="login-error" id="loginError"></div>
+        <div class="form-group">
+          <label>Password <span class="required">*</span></label>
+          <div class="password-wrapper">
+            <input type="password" class="form-control" id="loginPassword" placeholder="Enter doctor password" onkeydown="if(event.key==='Enter')handleLogin('doctor', initDoctorDashboard)">
+            <button class="toggle-pass" onclick="togglePasswordVisibility()">👁</button>
+          </div>
+        </div>
+        <button class="btn btn-success btn-block btn-lg" onclick="handleLogin('doctor', initDoctorDashboard)">
+          🔓 Login
+        </button>
+      </div>
+      <div class="login-footer">
+        <p>Default password: <strong>doctor123</strong></p>
+        <p style="margin-top:4px"><a href="index.html" style="color:var(--primary)">← Back to Home</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DOCTOR DASHBOARD ===== -->
+  <div class="dashboard" style="display:none">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" style="background:#0f4c2e">
+      <div class="sidebar-logo">
+        <h2>
+          <div class="s-icon" style="background:#28a745">👨‍⚕️</div>
+          Doctor Panel
+        </h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="active" onclick="showDoctorSection('dashboard')"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="#" onclick="showDoctorSection('patients')"><span class="nav-icon">👥</span> My Patients</a>
+        <a href="#" onclick="showDoctorSection('history')"><span class="nav-icon">📝</span> Completed</a>
+        <a href="index.html"><span class="nav-icon">🏠</span> Back to Home</a>
+      </nav>
+      <button class="logout-btn" onclick="handleLogout('doctor')">
+        <span>🚪</span> Logout
+      </button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="dash-main">
+      <button class="sidebar-toggle btn btn-sm" onclick="document.getElementById('sidebar').classList.toggle('open')" style="margin-bottom:1rem;background:var(--gray-200);color:var(--gray-700);display:none">
+        ☰ Menu
+      </button>
+
+      <!-- Doctor Selection -->
+      <div class="dash-header">
+        <h1>👨‍⚕️ Doctor Dashboard</h1>
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+          <label style="font-weight:600;font-size:0.9rem">Select Doctor:</label>
+          <select class="form-control" id="doctorSelect" onchange="switchDoctor()" style="width:auto;min-width:200px"></select>
+          <button class="btn btn-danger btn-sm" onclick="handleLogout('doctor')">🚪 Logout</button>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="section-dashboard">
+        <div class="doctor-now-serving" id="nowServingCard">
+          <div class="dns-label">Currently Serving</div>
+          <div class="dns-token" id="servingToken">---</div>
+          <div class="dns-name" id="servingName">No patient currently assigned</div>
+          <div class="dns-timer" id="servingTimer">00:00</div>
+          <div class="dns-actions">
+            <button class="btn btn-success btn-lg" onclick="doctorCompleteAndNext()" id="btnComplete">
+              ✅ Complete & Call Next
+            </button>
+            <button class="btn btn-primary btn-lg" onclick="doctorCallNext()" id="btnCallNext">
+              📢 Call Next Patient
+            </button>
+            <button class="btn btn-sm" style="background:var(--gray-200);color:var(--gray-700)" onclick="doctorTakeBreak()">
+              ☕ Take a Break
+            </button>
+          </div>
+        </div>
+
+        <div class="dash-cards" id="doctorStats"></div>
+
+        <div class="table-container">
+          <div class="table-header">
+            <h3>⏳ Patients Waiting</h3>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Position</th><th>Token</th><th>Name</th><th>Age</th><th>Gender</th><th>Village</th></tr>
+              </thead>
+              <tbody id="waitingTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- My Patients -->
+      <div id="section-patients" class="hidden">
+        <div class="dash-header"><h1>👥 All My Patients</h1></div>
+        <div class="table-container">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Token</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Village</th><th>Status</th></tr>
+              </thead>
+              <tbody id="allPatientsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div id="section-history" class="hidden">
+        <div class="dash-header"><h1>📝 Completed Consultations</h1></div>
+        <div class="table-container">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Token</th><th>Name</th><th>Age</th><th>Gender</th><th>Village</th><th>Status</th></tr>
+              </thead>
+              <tbody id="historyTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    let selectedDoctorId = '';
+    let timerInterval = null;
+    let timerSeconds = 0;
+
+    // ===== AUTH GATE =====
+    function initDoctorDashboard() {
+      document.querySelector('.dashboard').style.display = 'grid';
+      populateDoctors();
+      renderDoctorDashboard();
+    }
+
+    function togglePasswordVisibility() {
+      const input = document.getElementById('loginPassword');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    // ===== Sections =====
+    function showDoctorSection(name) {
+      document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.add('hidden'));
+      document.getElementById('section-' + name).classList.remove('hidden');
+      document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      document.getElementById('sidebar').classList.remove('open');
+      renderDoctorDashboard();
+    }
+
+    function populateDoctors() {
+      const doctors = DB.get(DB.DOCTORS);
+      const select = document.getElementById('doctorSelect');
+      select.innerHTML = '<option value="">-- Select --</option>';
+      doctors.forEach(d => {
+        const dept = getDepartment(d.departmentId);
+        select.innerHTML += `<option value="${d.id}">${d.name} (${dept ? dept.name : ''})</option>`;
+      });
+      if (doctors.length > 0) {
+        select.value = doctors[0].id;
+        selectedDoctorId = doctors[0].id;
+      }
+    }
+
+    function switchDoctor() {
+      selectedDoctorId = document.getElementById('doctorSelect').value;
+      renderDoctorDashboard();
+    }
+
+    function renderDoctorDashboard() {
+      if (!selectedDoctorId) return;
+      const doctor = getDoctor(selectedDoctorId);
+      if (!doctor) return;
+
+      const patients = DB.get(DB.PATIENTS);
+      const deptPatients = patients.filter(p => p.departmentId === doctor.departmentId);
+      const serving = deptPatients.find(p => p.status === 'serving');
+      const waiting = deptPatients.filter(p => p.status === 'waiting').sort((a, b) => a.queuePosition - b.queuePosition);
+      const completed = deptPatients.filter(p => p.status === 'completed');
+
+      document.getElementById('servingToken').textContent = serving ? serving.tokenNumber : '---';
+      document.getElementById('servingName').textContent = serving ? `${serving.name} • Age ${serving.age} • ${serving.gender}` : 'No patient currently assigned';
+
+      document.getElementById('btnComplete').style.display = serving ? 'inline-flex' : 'none';
+      document.getElementById('btnCallNext').style.display = serving ? 'none' : 'inline-flex';
+
+      document.getElementById('doctorStats').innerHTML = `
+        <div class="dash-card"><div class="dc-icon icon-blue">📋</div><div class="dc-info"><div class="dc-num">${deptPatients.length}</div><div class="dc-label">Total Assigned</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-orange">⏳</div><div class="dc-info"><div class="dc-num">${waiting.length}</div><div class="dc-label">Waiting</div></div></div>
+        <div class="dash-card"><div class="dc-icon icon-green">✅</div><div class="dc-info"><div class="dc-num">${completed.length}</div><div class="dc-label">Completed</div></div></div>
+      `;
+
+      document.getElementById('waitingTable').innerHTML = waiting.map((p, i) => `
+        <tr>
+          <td><strong>#${i + 1}</strong></td>
+          <td><strong>${p.tokenNumber}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age}</td>
+          <td>${p.gender}</td>
+          <td>${p.village}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" class="text-center" style="padding:2rem;color:var(--gray-500)">No patients waiting 🎉</td></tr>';
+
+      const statusBadge = { waiting: 'badge-waiting', serving: 'badge-serving', completed: 'badge-completed' };
+      document.getElementById('allPatientsTable').innerHTML = deptPatients.map(p => `
+        <tr>
+          <td><strong>${p.tokenNumber}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age}</td>
+          <td>${p.gender}</td>
+          <td>${p.phone}</td>
+          <td>${p.village}</td>
+          <td><span class="badge ${statusBadge[p.status]}">${p.status.toUpperCase()}</span></td>
+        </tr>
+      `).join('') || '<tr><td colspan="7" class="text-center" style="padding:2rem">No patients</td></tr>';
+
+      document.getElementById('historyTable').innerHTML = completed.map(p => `
+        <tr>
+          <td><strong>${p.tokenNumber}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age}</td>
+          <td>${p.gender}</td>
+          <td>${p.village}</td>
+          <td><span class="badge badge-completed">COMPLETED</span></td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" class="text-center" style="padding:2rem">No completed consultations</td></tr>';
+
+      startTimer(serving);
+    }
+
+    function doctorCallNext() {
+      if (!selectedDoctorId) return;
+      const doctor = getDoctor(selectedDoctorId);
+      const next = callNextPatient(doctor.departmentId);
+      if (next) showToast(`Now serving: ${next.tokenNumber} - ${next.name}`);
+      else showToast('No more patients waiting', 'warning');
+      renderDoctorDashboard();
+    }
+
+    function doctorCompleteAndNext() {
+      if (!selectedDoctorId) return;
+      const doctor = getDoctor(selectedDoctorId);
+      const patients = DB.get(DB.PATIENTS);
+      const serving = patients.find(p => p.departmentId === doctor.departmentId && p.status === 'serving');
+      if (serving) {
+        markCompleted(serving.id);
+        showToast(`${serving.name} marked as completed`);
+      }
+      const next = callNextPatient(doctor.departmentId);
+      if (next) showToast(`Now serving: ${next.tokenNumber} - ${next.name}`);
+      renderDoctorDashboard();
+    }
+
+    function doctorTakeBreak() {
+      showToast('Break mode activated. Click "Call Next" when ready.', 'warning');
+    }
+
+    function startTimer(serving) {
+      clearInterval(timerInterval);
+      timerSeconds = 0;
+      if (serving) {
+        timerInterval = setInterval(() => {
+          timerSeconds++;
+          const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+          const secs = String(timerSeconds % 60).padStart(2, '0');
+          document.getElementById('servingTimer').textContent = `${mins}:${secs}`;
+        }, 1000);
+      } else {
+        document.getElementById('servingTimer').textContent = '00:00';
+      }
+    }
+
+    function checkMobile() {
+      const toggle = document.querySelector('.sidebar-toggle');
+      toggle.style.display = window.innerWidth <= 768 ? 'inline-flex' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      showLoginScreen('doctor', initDoctorDashboard);
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+    });
+  </script>
+</body>
+</html>
